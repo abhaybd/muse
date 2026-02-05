@@ -194,7 +194,7 @@ def read_profile(profile: str, activate: bool = False):
         print_(f"Profile {profile} does not exist")
         return 1
 
-    print_fn = print if activate else print_
+    print_fn = (lambda s: print(f"export {s}")) if activate else print_
 
     password = prompt_password()
     secrets = decrypt(profile_path.read_bytes(), password).split("\n")
@@ -215,10 +215,10 @@ def read_profile(profile: str, activate: bool = False):
 def deactivate_profile():
     active_profile = os.getenv("MUSE_ACTIVE_PROFILE")
     if not active_profile:
-        print_("No active profile", file=sys.stderr)
+        print_("No active profile")
         return 1
 
-    print_(f"Deactivating profile {active_profile}", file=sys.stdout)
+    print_(f"Deactivating profile {decode_str(active_profile)}")
     print("unset MUSE_ACTIVE_PROFILE")
     for secret in os.getenv("MUSE_ACTIVE_PROFILE_SECRETS").split(","):
         if secret.strip():
