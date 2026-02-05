@@ -26,9 +26,7 @@ def print_(s: str):
 
 
 def key_from_password(password: str, salt: bytes):
-    kdf = PBKDF2HMAC(
-        algorithm=KDF_ALGORITHM, length=KDF_LENGTH, salt=salt,
-        iterations=KDF_ITERATIONS)
+    kdf = PBKDF2HMAC(algorithm=KDF_ALGORITHM, length=KDF_LENGTH, salt=salt, iterations=KDF_ITERATIONS)
     key = kdf.derive(password.encode("utf-8"))
     return base64.urlsafe_b64encode(key)
 
@@ -214,6 +212,7 @@ def deactivate_profile():
     print("unset MUSE_ACTIVE_PROFILE_SECRETS")
     return 0
 
+
 def get_args():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", help="Command to run", required=True)
@@ -238,7 +237,11 @@ def get_args():
 
     remove_parser = subparsers.add_parser("remove", help="Remove secrets from a profile")
     remove_parser.add_argument("profile", help="Profile to remove secrets from")
-    remove_parser.add_argument("secrets", help="Secret to remove, if unspecified delete whole profile", nargs="*")
+    remove_parser.add_argument(
+        "secrets",
+        nargs="*",
+        help="Secret to remove, if unspecified delete whole profile",
+    )
     remove_parser.set_defaults(func=remove_secrets)
 
     deactivate_parser = subparsers.add_parser("deactivate", help="Deactivate a profile")

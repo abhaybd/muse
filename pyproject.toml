@@ -24,5 +24,13 @@ dependencies = [
     "cryptography",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "ruff",
+]
+
 [project.scripts]
 muse = "muse.main:main"
+
+[tool.ruff]
+line-length = 150
