@@ -164,11 +164,23 @@ def remove_secrets(profile: str, secrets: list[str]):
     return 0
 
 
-def list_profiles():
-    if MUSE_DIR.exists():
-        for profile_path in MUSE_DIR.iterdir():
-            if profile_path.is_file():
-                print_(decode_str(profile_path.name))
+def list_profiles(profile: str = None):
+    if profile:
+        profile_path = get_profile_path(profile)
+        if not profile_path.exists():
+            print_(f"Profile {profile} does not exist")
+            return 1
+
+        password = prompt_password()
+        secrets = decrypt(profile_path.read_bytes(), password).split("\n")
+        for secret in secrets:
+            if secret := secret.strip():
+                print_(secret.split("=", 1)[0])
+    else:
+        if MUSE_DIR.exists():
+            for profile_path in MUSE_DIR.iterdir():
+                if profile_path.is_file():
+                    print_(decode_str(profile_path.name))
     return 0
 
 
@@ -249,7 +261,8 @@ def get_args():
     deactivate_parser = subparsers.add_parser("deactivate", help="Deactivate a profile")
     deactivate_parser.set_defaults(func=deactivate_profile)
 
-    list_parser = subparsers.add_parser("list", help="List all profiles")
+    list_parser = subparsers.add_parser("list", help="List profiles or secrets in a profile")
+    list_parser.add_argument("profile", nargs="?", help="Profile to list, if not provided list all profiles")
     list_parser.set_defaults(func=list_profiles)
 
     return parser.parse_args()
