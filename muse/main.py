@@ -182,6 +182,8 @@ def read_profile(profile: str, activate: bool = False):
         print_(f"Profile {profile} does not exist")
         return 1
 
+    print_fn = print if activate else print_
+
     password = prompt_password()
     secrets = decrypt(profile_path.read_bytes(), password).split("\n")
     secret_names = []
@@ -189,7 +191,7 @@ def read_profile(profile: str, activate: bool = False):
         secret_name = secret.split("=", 1)[0].strip()
         if secret_name:
             secret_names.append(secret_name)
-            print(secret)
+            print_fn(secret)
 
     if activate:
         print(f"MUSE_ACTIVE_PROFILE={profile_path.name}")
