@@ -21,8 +21,8 @@ SALT_LENGTH = 16
 MUSE_DIR = Path.home() / ".muse"
 
 
-def print_(s: str):
-    print(s, file=sys.stderr)
+def print_(s: str, sep: str = " ", end: str = "\n", flush: bool = False):
+    print(s, sep=sep, end=end, file=sys.stderr, flush=flush)
 
 
 def key_from_password(password: str, salt: bytes):
@@ -42,7 +42,8 @@ def prompt_password(confirm: bool = False):
 
 
 def prompt_yn(question: str):
-    answer = input(f"{question} (y/n): ")
+    print_(question, end=" (y/n): ", flush=True)
+    answer = input()
     if answer.lower() == "y":
         return True
     elif answer.lower() == "n":

@@ -25,10 +25,12 @@ MUSE can be run directly from GitHub using `uvx` (no PyPI installation required)
 uvx --from git+https://github.com/abhaybd/muse.git muse --help
 ```
 
-For convenient usage, add an alias to your shell configuration (`~/.bashrc`, `~/.zshrc`, etc.):
+For convenient usage, add a function to your shell configuration (`~/.bashrc`, `~/.zshrc`, etc.):
 
 ```bash
-alias muse='eval $(uvx --from git+https://github.com/abhaybd/muse.git muse)'
+muse() {
+    eval "$(uvx --from git+https://github.com/abhaybd/muse.git muse "$@")"
+}
 ```
 
 Note that `eval` is required since the `activate` and `deactivate` commands need to export variables into your active shell session.
