@@ -8,7 +8,7 @@ import sys
 import re
 import os
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
@@ -39,6 +39,22 @@ def prompt_password(confirm: bool = False):
             print_("Passwords do not match")
             return prompt_password(confirm)
     return password
+
+
+def prompt_password_and_decrypt(profile_path: Path, max_tries: int = 3) -> tuple[str, str]:
+    """Prompt for a password and decrypt the profile, with retries."""
+    tries = 0
+    while True:
+        password = prompt_password()
+        try:
+            return password, decrypt(profile_path.read_bytes(), password)
+        except InvalidToken:
+            if tries < max_tries - 1:
+                tries += 1
+                print_("Invalid password, try again")
+            else:
+                print_("Invalid password! Too many tries.")
+                raise
 
 
 def prompt_yn(question: str):
@@ -98,8 +114,8 @@ def add_secrets(profile: str, secrets: list[str]):
         return 1
 
     if profile_path.stat().st_size > 0:
-        password = prompt_password()
-        existing_secrets = decrypt(profile_path.read_bytes(), password).split("\n")
+        password, existing_secrets = prompt_password_and_decrypt(profile_path)
+        existing_secrets = existing_secrets.split("\n")
     else:
         password = None
         existing_secrets = []
@@ -146,8 +162,8 @@ def remove_secrets(profile: str, secrets: list[str]):
         print_(f"Profile {profile} is empty")
         return 1
 
-    password = prompt_password()
-    existing_secrets = decrypt(profile_path.read_bytes(), password).split("\n")
+    password, existing_secrets = prompt_password_and_decrypt(profile_path)
+    existing_secrets = existing_secrets.split("\n")
     existing_secrets_dict: dict[str, str] = {}
     for secret in existing_secrets:
         secret_name, secret_value = secret.split("=", 1)
@@ -172,8 +188,8 @@ def list_profiles(profile: str = None):
             print_(f"Profile {profile} does not exist")
             return 1
 
-        password = prompt_password()
-        secrets = decrypt(profile_path.read_bytes(), password).split("\n")
+        _, secrets = prompt_password_and_decrypt(profile_path)
+        secrets = secrets.split("\n")
         for secret in secrets:
             if secret := secret.strip():
                 print_(secret.split("=", 1)[0])
@@ -197,8 +213,8 @@ def read_profile(profile: str, activate: bool = False):
 
     print_fn = (lambda s: print(f"export {s}")) if activate else print_
 
-    password = prompt_password()
-    secrets = decrypt(profile_path.read_bytes(), password).split("\n")
+    _, secrets = prompt_password_and_decrypt(profile_path)
+    secrets = secrets.split("\n")
     secret_names = []
     for secret in secrets:
         secret_name = secret.split("=", 1)[0].strip()
@@ -273,7 +289,10 @@ def main():
     args = get_args()
     func_params = inspect.signature(args.func).parameters
     func_args = {k: v for k, v in vars(args).items() if k in func_params}
-    return args.func(**func_args)
+    try:
+        return args.func(**func_args)
+    except InvalidToken:
+        return 1
 
 
 if __name__ == "__main__":
