@@ -212,9 +212,17 @@ def list_profiles(profile: str = None):
                 print_(secret.split("=", 1)[0])
     else:
         if MUSE_DIR.exists():
-            for profile_path in MUSE_DIR.iterdir():
-                if profile_path.is_file():
-                    print_(decode_str(profile_path.name))
+            active_profile = os.getenv("MUSE_ACTIVE_PROFILE")
+            profile_paths = [p for p in MUSE_DIR.iterdir() if p.is_file()]
+
+            if len(profile_paths) == 0:
+                print_("No profiles found")
+                return 1
+
+            print_("Profiles:")
+            for profile_path in profile_paths:
+                ch = "*" if profile_path.name == active_profile else " "
+                print_(f"\t({ch}) {decode_str(profile_path.name)}")
     return 0
 
 
