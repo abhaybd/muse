@@ -7,6 +7,7 @@ import secrets
 from getpass import getpass
 import sys
 import re
+import shlex
 import os
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -20,6 +21,7 @@ KDF_ITERATIONS = 120000
 SALT_LENGTH = 16
 
 MUSE_DIR = Path.home() / ".muse"
+SECRET_NAME_REGEX = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
 def print_(s: str, sep: str = " ", end: str = "\n", flush: bool = False):
@@ -85,6 +87,11 @@ def decrypt(data: bytes, password: str):
     return f.decrypt(ciphertext).decode("utf-8")
 
 
+def validate_secret_name(name: str) -> bool:
+    """Check that a secret name is a valid shell identifier."""
+    return bool(SECRET_NAME_REGEX.match(name))
+
+
 def encode_str(s: str):
     return base64.urlsafe_b64encode(s.encode("utf-8")).decode("utf-8")
 
@@ -129,6 +136,11 @@ def add_secrets(profile: str, secrets: list[str], overwrite: bool = False):
     secrets = [remove_regex.sub("", secret) for secret in secrets]
     secrets = [secret for secret in secrets if secret.strip()]
     secrets_dict = dict(secret.split("=", 1) for secret in secrets)
+
+    invalid_names = [name for name in secrets_dict if not validate_secret_name(name)]
+    if invalid_names:
+        print_(f"Invalid secret name(s) (must be valid shell identifiers): {invalid_names}")
+        return 1
 
     if len(secrets_dict) != len(secrets):
         dupe_counter = Counter(s.split("=", 1)[0] for s in secrets)
@@ -225,14 +237,14 @@ def read_profile(profile: str, activate: bool = False):
         secret_name, secret_value = map(str.strip, secret.split("=", 1))
         if secret_name:
             secret_names.append(secret_name)
-            # add single quotes to the value if activating the profile to prevent shell expansion
+            # quote the value if activating to prevent shell expansion
             if activate:
-                secret_value = f"'{secret_value}'"
+                secret_value = shlex.quote(secret_value)
             print_fn(f"{secret_name}={secret_value}")
 
     if activate:
-        print(f"MUSE_ACTIVE_PROFILE={profile_path.name}")
-        print(f"MUSE_ACTIVE_PROFILE_SECRETS={','.join(secret_names)}")
+        print(f"export MUSE_ACTIVE_PROFILE={shlex.quote(profile_path.name)}")
+        print(f"export MUSE_ACTIVE_PROFILE_SECRETS={shlex.quote(','.join(secret_names))}")
 
     return 0
 
@@ -245,9 +257,14 @@ def deactivate_profile():
 
     print_(f"Deactivating profile {decode_str(active_profile)}")
     print("unset MUSE_ACTIVE_PROFILE")
-    for secret in os.getenv("MUSE_ACTIVE_PROFILE_SECRETS").split(","):
-        if secret.strip():
-            print(f"unset {secret.strip()}")
+    active_secrets = os.getenv("MUSE_ACTIVE_PROFILE_SECRETS", "")
+    for secret in active_secrets.split(","):
+        name = secret.strip()
+        if name:
+            if not validate_secret_name(name):
+                print_(f"Skipping invalid secret name: {name}")
+                continue
+            print(f"unset {name}")
     print("unset MUSE_ACTIVE_PROFILE_SECRETS")
     return 0
 
