@@ -1,4 +1,5 @@
 import argparse
+from collections import Counter
 import inspect
 from pathlib import Path
 import base64
@@ -107,7 +108,7 @@ def create_profile(profile: str, secrets: list[str]):
     return add_secrets(profile, secrets)
 
 
-def add_secrets(profile: str, secrets: list[str]):
+def add_secrets(profile: str, secrets: list[str], overwrite: bool = False):
     profile_path = get_profile_path(profile)
     if not profile_path.exists():
         print_(f"Profile {profile} does not exist")
@@ -127,20 +128,27 @@ def add_secrets(profile: str, secrets: list[str]):
     remove_regex = re.compile(r"#.*")
     secrets = [remove_regex.sub("", secret) for secret in secrets]
     secrets = [secret for secret in secrets if secret.strip()]
+    secrets_dict = dict(secret.split("=", 1) for secret in secrets)
 
-    existing_vars = set(secret.split("=", 1)[0] for secret in existing_secrets)
+    if len(secrets_dict) != len(secrets):
+        dupe_counter = Counter(s.split("=", 1)[0] for s in secrets)
+        duplicates = [s for s, count in dupe_counter.items() if count > 1]
+        print_(f"Trying to add duplicate secrets: {duplicates}")
+        return 1
+
+    profile_secrets_dict = dict(secret.split("=", 1) for secret in existing_secrets)
     for secret in secrets:
-        new_var = secret.split("=", 1)[0]
-        if new_var in existing_vars:
-            print_(f"Variable {new_var} already exists")
+        var_name, var_value = secret.split("=", 1)
+        if not overwrite and var_name in profile_secrets_dict:
+            print_(f"Variable {var_name} already exists")
             return 1
-
-    new_secrets = existing_secrets + secrets
+        profile_secrets_dict[var_name] = var_value
 
     if password is None:
         password = prompt_password(confirm=True)
 
-    encrypted_secrets = encrypt("\n".join(new_secrets), password)
+    updated_profile_secrets = [f"{name}={value}" for name, value in profile_secrets_dict.items()]
+    encrypted_secrets = encrypt("\n".join(updated_profile_secrets), password)
     profile_path.write_bytes(encrypted_secrets)
     return 0
 
@@ -164,10 +172,7 @@ def remove_secrets(profile: str, secrets: list[str]):
 
     password, existing_secrets = prompt_password_and_decrypt(profile_path)
     existing_secrets = existing_secrets.split("\n")
-    existing_secrets_dict: dict[str, str] = {}
-    for secret in existing_secrets:
-        secret_name, secret_value = secret.split("=", 1)
-        existing_secrets_dict[secret_name] = secret_value
+    existing_secrets_dict = dict(secret.split("=", 1) for secret in existing_secrets)
 
     for secret in secrets:
         if secret not in existing_secrets_dict:
@@ -217,10 +222,13 @@ def read_profile(profile: str, activate: bool = False):
     secrets = secrets.split("\n")
     secret_names = []
     for secret in secrets:
-        secret_name = secret.split("=", 1)[0].strip()
+        secret_name, secret_value = map(str.strip, secret.split("=", 1))
         if secret_name:
             secret_names.append(secret_name)
-            print_fn(secret)
+            # add single quotes to the value if activating the profile to prevent shell expansion
+            if activate:
+                secret_value = f"'{secret_value}'"
+            print_fn(f"{secret_name}={secret_value}")
 
     if activate:
         print(f"MUSE_ACTIVE_PROFILE={profile_path.name}")
