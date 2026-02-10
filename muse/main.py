@@ -92,6 +92,10 @@ def validate_secret_name(name: str) -> bool:
     return bool(SECRET_NAME_REGEX.match(name))
 
 
+def validate_secret_value(value: str) -> bool:
+    return "\n" not in value
+
+
 def encode_str(s: str):
     return base64.urlsafe_b64encode(s.encode("utf-8")).decode("utf-8")
 
@@ -132,7 +136,7 @@ def add_secrets(profile: str, secrets: list[str], overwrite: bool = False):
         print_("Reading secrets from stdin")
         secrets = [line.strip() for line in sys.stdin]
 
-    remove_regex = re.compile(r"#.*")
+    remove_regex = re.compile(r"^\s*#.*")
     secrets = [remove_regex.sub("", secret) for secret in secrets]
     secrets = [secret for secret in secrets if secret.strip()]
     secrets_dict = dict(secret.split("=", 1) for secret in secrets)
@@ -140,6 +144,11 @@ def add_secrets(profile: str, secrets: list[str], overwrite: bool = False):
     invalid_names = [name for name in secrets_dict if not validate_secret_name(name)]
     if invalid_names:
         print_(f"Invalid secret name(s) (must be valid shell identifiers): {invalid_names}")
+        return 1
+
+    invalid_value_names = [name for name, value in secrets_dict.items() if not validate_secret_value(value)]
+    if invalid_value_names:
+        print_(f"Invalid secret value(s) (must not contain newlines): {invalid_value_names}")
         return 1
 
     if len(secrets_dict) != len(secrets):
@@ -243,12 +252,14 @@ def read_profile(profile: str, activate: bool = False):
     secret_names = []
     for secret in secrets:
         secret_name, secret_value = map(str.strip, secret.split("=", 1))
-        if secret_name:
+        if validate_secret_name(secret_name):
             secret_names.append(secret_name)
             # quote the value if activating to prevent shell expansion
             if activate:
                 secret_value = shlex.quote(secret_value)
             print_fn(f"{secret_name}={secret_value}")
+        else:
+            print_(f"Warning: Skipping invalid secret name: {secret_name}")
 
     if activate:
         print(f"export MUSE_ACTIVE_PROFILE={shlex.quote(profile_path.name)}")

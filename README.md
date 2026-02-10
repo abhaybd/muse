@@ -43,7 +43,7 @@ Note that `eval` is required since the `activate` and `deactivate` commands need
     muse create person_1 API_KEY=sk-xxxx DATABASE_URL=postgres://...
     ```
 
-    To avoid your secrets appearing in the bash history, you can also just run `muse create person_1`, which will read secrets from `stdin`.
+    To avoid your secrets appearing in the bash history or being exposed via process names, you can also just run `muse create person_1`, which will read secrets from `stdin`.
     When you're done entering secrets (if any) you can finish by sending `<EOF>`, e.g. with `ctrl+D`.
 
     You'll then be prompted to set a password for the profile.
