@@ -152,7 +152,7 @@ def add_secrets(profile: str, secrets: list[str], overwrite: bool = False):
     for secret in secrets:
         var_name, var_value = secret.split("=", 1)
         if not overwrite and var_name in profile_secrets_dict:
-            print_(f"Variable {var_name} already exists")
+            print_(f"Variable {var_name} already exists, use --overwrite to overwrite existing secrets")
             return 1
         profile_secrets_dict[var_name] = var_value
 
@@ -288,6 +288,7 @@ def get_args():
 
     add_parser = subparsers.add_parser("add", help="Add secrets to a profile")
     add_parser.add_argument("profile", help="Profile to add secrets to")
+    add_parser.add_argument("-o", "--overwrite", action="store_true", help="Overwrite existing secrets")
     add_parser.add_argument("secrets", nargs="*", help="Secrets to add, read from stdin if not provided")
     add_parser.set_defaults(func=add_secrets)
 
