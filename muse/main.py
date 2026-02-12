@@ -24,6 +24,15 @@ MUSE_DIR = Path.home() / ".muse"
 SECRET_NAME_REGEX = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
+class ArgumentParserStderr(argparse.ArgumentParser):
+    """
+    Subclass of argparse.ArgumentParser that prints help to stderr.
+    """
+
+    def print_help(self, file=None):
+        super().print_help(file=file or sys.stderr)
+
+
 def print_(s: str, sep: str = " ", end: str = "\n", flush: bool = False):
     print(s, sep=sep, end=end, file=sys.stderr, flush=flush)
 
@@ -289,7 +298,7 @@ def deactivate_profile():
 
 
 def get_args():
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParserStderr()
     subparsers = parser.add_subparsers(dest="command", help="Command to run", required=True)
 
     activate_parser = subparsers.add_parser("activate", help="Activate a profile")
