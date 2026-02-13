@@ -125,7 +125,11 @@ def create_profile(profile: str, secrets: list[str]):
         return 1
     profile_path.touch()
 
-    return add_secrets(profile, secrets)
+    try:
+        return add_secrets(profile, secrets)
+    except KeyboardInterrupt:
+        profile_path.unlink()
+        raise
 
 
 def add_secrets(profile: str, secrets: list[str], overwrite: bool = False):
@@ -347,6 +351,8 @@ def main():
         return args.func(**func_args)
     except InvalidToken:
         return 1
+    except KeyboardInterrupt:
+        return 130
 
 
 if __name__ == "__main__":
